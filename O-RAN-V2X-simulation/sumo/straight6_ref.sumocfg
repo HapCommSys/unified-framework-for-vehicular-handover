@@ -1,0 +1,11 @@
+<configuration>
+    <input>
+        <net-file value="straight6_ref.net.xml"/>
+        <route-files value="straight6_ref.rou.xml"/>
+    </input>
+    <time>
+        <begin value="0"/>
+        <end value="20"/>
+        <step-length value="0.05"/>
+    </time>
+</configuration>
