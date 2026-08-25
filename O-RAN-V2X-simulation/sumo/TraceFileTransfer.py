@@ -73,7 +73,9 @@ def write_trace(traces, output_path, precision, minimum_samples):
     number_format = '{{:.{}f}}'.format(precision)
 
     with output_path.open('w', encoding='utf-8', newline='\n') as output_file:
-        for vehicle_id in selected_ids:
+        for index, vehicle_id in enumerate(selected_ids):
+            if index:
+                output_file.write('\n')
             output_file.write('# vehicle {}\n'.format(vehicle_id))
             for timestamp, x, y in traces[vehicle_id]:
                 output_file.write(
@@ -83,7 +85,6 @@ def write_trace(traces, output_path, precision, minimum_samples):
                         number_format.format(y),
                     )
                 )
-            output_file.write('\n')
 
     return len(selected_ids)
 

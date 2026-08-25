@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration>
+    <input>
+        <net-file value="Highway_2000.net.xml"/>
+        <route-files value="Highway.rou.xml"/>
+    </input>
+
+    <processing>
+        <lateral-resolution value="0.1"/>
+    </processing>
+
+    <output>
+        <fcd-output value="fcdoutput_2000.xml"/>
+    </output>
+
+    <fcd_device>
+        <device.fcd.period value="0.01"/>
+    </fcd_device>
+
+    <time>
+        <step-length value="0.01"/>
+    </time>
+</configuration>

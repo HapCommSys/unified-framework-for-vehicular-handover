@@ -23,6 +23,7 @@ runs/
 O-RAN-V2X-simulation/build/
 O-RAN-V2X-simulation/build-dir/
 O-RAN-V2X-simulation/cmake-cache/
+O-RAN-V2X-simulation/sumo/fcdoutput*.xml
 *.log
 *.pcap
 *.tr

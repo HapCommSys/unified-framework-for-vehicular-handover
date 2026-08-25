@@ -58,6 +58,8 @@ xApp container.
 | --- | --- |
 | `O-RAN-V2X-simulation/` | ns-3/mmWave/ns-O-RAN simulation tree with the V2X handover extensions |
 | `O-RAN-V2X-simulation/scratch/MultiVehicleURLLC.cc` | Reference multi-vehicle URLLC scenario |
+| `O-RAN-V2X-simulation/sumo/HighwayMultiVehicle.sumocfg` | Complete bidirectional 2,000 m SUMO highway scenario |
+| `O-RAN-V2X-simulation/sumo/traceFile.txt` | Ready-to-run six-vehicle reference mobility trace |
 | `O-RAN-V2X-simulation/sumo/TraceFileTransfer.py` | SUMO FCD XML to ns-3 waypoint converter |
 | `sample-xapp/` | Python inference agent and included pretrained checkpoint |
 | `xapp-sm-connector/` | C++ connector between the Python agent and the near-RT RIC |
@@ -66,14 +68,13 @@ xApp container.
 
 ## Reproducibility and data availability
 
-The repository includes the simulation implementation, xApp and connector,
-mobility converter, training code, and a pretrained checkpoint. The following
-items remain external:
+The repository includes the simulation implementation, xApp and connector, a
+complete 2,000 m SUMO road and traffic scenario, a ready-to-run six-vehicle
+mobility trace, the mobility converter, training code, and a pretrained
+checkpoint. The following items remain external:
 
 - the ColO-RAN near-RT RIC;
 - `e2sim` and the ns-O-RAN `oran-interface` module;
-- a SUMO network/route definition or another SUMO scenario used to generate
-  mobility;
 - the raw experiment logs, preprocessing pipeline, and exact training dataset
   used for the paper.
 
@@ -217,25 +218,34 @@ cd "$FRAMEWORK_ROOT/O-RAN-V2X-simulation"
 If CMake cannot locate `e2sim`, verify that `build_e2sim.sh` completed its
 package installation and that `ldconfig` was run as part of that script.
 
-## 4. Generate a mobility trace
+## 4. Use or regenerate the reference mobility trace
 
-Use any valid SUMO scenario to export [floating-car data
-(FCD)](https://sumo.dlr.de/docs/Simulation/Output/FCDOutput.html), then convert it
-to the format consumed by `MultiVehicleURLLC.cc`:
+The repository already includes `sumo/traceFile.txt`, a fixed six-vehicle
+reference trace for the supplied 2,000 m bidirectional highway. The highway has
+three lanes per direction and matches the ten-RSU layout in
+`MultiVehicleURLLC.cc`. SUMO is not required when replaying this included trace.
+
+To regenerate a trace, run the included SUMO network, routes, and configuration
+to export [floating-car data
+(FCD)](https://sumo.dlr.de/docs/Simulation/Output/FCDOutput.html), then convert
+the output to the format consumed by `MultiVehicleURLLC.cc`:
 
 ```bash
 cd "$FRAMEWORK_ROOT/O-RAN-V2X-simulation"
-sumo -c /path/to/scenario.sumocfg --fcd-output /tmp/fcdoutput.xml
-python3 sumo/TraceFileTransfer.py /tmp/fcdoutput.xml sumo/traceFile.txt
+sumo -c sumo/HighwayMultiVehicle.sumocfg \
+  --fcd-output /tmp/vehicular-handover-fcd.xml
+python3 sumo/TraceFileTransfer.py \
+  /tmp/vehicular-handover-fcd.xml sumo/traceFile.txt --precision 2
 ```
 
-The converter retains each SUMO vehicle's entry and departure times and writes
-blank-line-separated `time x y` waypoint blocks. See
+The converter retains each SUMO vehicle's actual entry and departure times and
+writes blank-line-separated `time x y` waypoint blocks without off-road
+placeholder positions. The route file uses exponential vehicle-generation
+intervals, so regenerated traffic can depend on the SUMO version and
+random-number settings; the included trace provides the fixed reference input.
+See
 [`O-RAN-V2X-simulation/sumo/README.md`](O-RAN-V2X-simulation/sumo/README.md) for
 the exact format.
-
-`straight6_ref.sumocfg` is retained as a configuration template, but its
-referenced `.net.xml` and `.rou.xml` inputs are not included.
 
 ## 5. Run the closed-loop example
 

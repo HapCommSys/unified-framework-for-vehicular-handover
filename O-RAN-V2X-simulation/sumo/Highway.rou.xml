@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <vType id="normal_car" vClass="passenger" maxSpeed="50" speedFactor="1.0"
+           carFollowModel="IDM" lcCooperative="1.0" lcStrategic="1.0"
+           maxSpeedLat="3" sigma="0.5" speedDev="0.1" color="red"/>
+
+    <route id="r_0" edges="E0"/>
+    <route id="r_1" edges="-E0"/>
+
+    <flow id="f_0" type="normal_car" begin="0.00" from="E0" to="E0"
+          end="10.00" period="exp(0.4)" departSpeed="avg" departLane="best"/>
+    <flow id="f_1" type="normal_car" begin="0.00" from="-E0" to="-E0"
+          end="10.00" period="exp(0.4)" departSpeed="avg" departLane="best"/>
+</routes>
