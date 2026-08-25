@@ -99,4 +99,7 @@ UeFailures.txt
 stderr
 *.out
 *.xml
+!sumo/*.net.xml
+!sumo/*.rou.xml
+!sumo/*.add.xml
 output.txt

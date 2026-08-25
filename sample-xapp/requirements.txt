@@ -1,0 +1,8 @@
+# Recorded in the Python 3.6.9 reference xApp container.
+numpy==1.19.5
+pandas==1.1.5
+scipy==1.5.4
+
+# The reference container reports 1.10.2+cu102, but inference runs on CPU.
+# Pin the common release so the appropriate platform wheel can be selected.
+torch==1.10.2

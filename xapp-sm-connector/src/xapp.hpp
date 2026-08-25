@@ -67,9 +67,10 @@ using namespace rapidjson;
 #define XAPP_TERMINATE "terminate"
 
 // id of gnb to control as seen from the ric
+// This value is rewritten by build_xapp.sh.
 // #define GNB_ID "ns-o-ran"
-#define GNB_ID "file"
-// #define GNB_ID "rsu"
+// #define GNB_ID "file"
+#define GNB_ID "rsu"
 #define DEBUG 0
 
 class Xapp{

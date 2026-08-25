@@ -1,10 +1,12 @@
 # from xapp_msg_decode import *
+import os
 from threading import Thread
 import struct
 from typing import Dict, Optional
 # from threshold_HO import *
 # from RLmodel import *
-from RLmodel_latest import *
+import numpy as np
+from RLmodel_latest import agent, ckpt, select_action, state_dim
 import logging
 import time
 import sys
@@ -12,10 +14,17 @@ import queue as q
 import pandas as pd
 np.set_printoptions(suppress=True, )
 
-numBS = -1
+registered_e2_nodes = []
 with open("../xapp-sm-connector/init/rsu_list.txt", 'r') as f:
-    for line in f:
-        numBS += 1
+    registered_e2_nodes = [line.strip() for line in f if line.strip()]
+
+# rsu_list.txt contains the LTE anchor first, followed by the mmWave RSUs.
+numBS = len(registered_e2_nodes) - 1
+if numBS != state_dim[0]:
+    raise RuntimeError(
+        f'The checkpoint expects {state_dim[0]} mmWave RSUs, but rsu_list.txt '
+        f'defines {numBS} (plus one LTE anchor).'
+    )
 
 RicMsg = q.Queue(-1)
 RLInput = q.Queue(-1)
@@ -44,8 +53,6 @@ cellId_imsi = {}  # cellId: imsi
 def KpmDecodeThread ():
 
     while True:
-        if UnDecode.empty():
-            continue
         msg = UnDecode.get()
         msg = deserialize_map(msg)
         # for key, value in msg.items():
@@ -68,8 +75,6 @@ def KpmUpdateThread ():
     inputlogger.info(f"Input features: timestamp, {column}")
 
     while True:
-        if Decoded.empty():
-            continue
         report = Decoded.get()
         try:
             cellId = int(report.get("cellId"))
@@ -154,8 +159,6 @@ def RLThread ():
     handoverlogger.addHandler(sh)
 
     while True:
-        if RLInput.empty():
-            continue
         # flag = False
         timestamp, state_np = RLInput.get()
         # print(state_np)

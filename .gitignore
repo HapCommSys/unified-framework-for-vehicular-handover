@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+.~lock.*
+
+# Local experiment data and training output
+Dataset/
+raw_data/
+logs/
+runs/
+
+# Local simulation/build output
+O-RAN-V2X-simulation/build/
+O-RAN-V2X-simulation/build-dir/
+O-RAN-V2X-simulation/cmake-cache/
+*.log
+*.pcap
+*.tr

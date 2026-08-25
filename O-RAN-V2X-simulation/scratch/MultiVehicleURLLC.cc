@@ -12,9 +12,10 @@
 #include <fstream>
 #include <sstream>
 #include "ns3/mobility-module.h"
-#include "ns3/ns2-mobility-helper.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/config-store-module.h"
+#include <algorithm>
+#include <vector>
 
 using namespace ns3;
 using namespace mmwave;
@@ -133,8 +134,7 @@ void PrintPosition (NodeContainer nodeCantainer, Time period)
 int
 main (int argc, char *argv[])
 {
-  std::string traceFile = "/home/yizhou/桌面/SUMODEMO/SimpleDemo/MultiVehicle/Highway/exp=3/traceFile.txt";
-  // std::string traceFile = "/home/yizhou/桌面/SUMODEMO/SimpleDemo/MultiVehicle/rsu_m=6/traceFile.txt";
+  std::string traceFile;
 
   LogComponentEnableAll (LOG_PREFIX_ALL);
   // LogComponentEnable ("LteEnbNetDevice", LOG_LEVEL_INFO);
@@ -292,56 +292,104 @@ main (int argc, char *argv[])
   Ptr<MmWavePointToPointEpcHelper> epcHelper = CreateObject<MmWavePointToPointEpcHelper> ();
   mmwaveHelper->SetEpcHelper (epcHelper);
 
-  std::fstream trace;
-  trace.open (traceFile, std::ios::in);
-  if (!trace){
-    std::cerr << "Unable to open file!" << std::endl;
+  if (traceFile.empty ())
+  {
+    std::cerr << "Missing mobility trace. Pass --traceFile=/path/to/traceFile.txt" << std::endl;
     return 1;
   }
+
+  struct MobilityRecord
+  {
+    double time;
+    double x;
+    double y;
+  };
+
+  std::ifstream trace (traceFile);
+  if (!trace.is_open ())
+  {
+    std::cerr << "Unable to open mobility trace: " << traceFile << std::endl;
+    return 1;
+  }
+
+  std::vector<std::vector<MobilityRecord>> vehicleTraces;
+  std::vector<MobilityRecord> currentVehicleTrace;
   std::string line;
-  int nUeNodes = 0;
-  // auto isSpace = [](u_char c) {return std::isspace(c);};
-  while (std::getline(trace, line)) if (line.empty()) ++nUeNodes;
-  
-  // trace.close();
+  uint32_t lineNumber = 0;
+  while (std::getline (trace, line))
+  {
+    ++lineNumber;
+    const std::size_t first = line.find_first_not_of (" \t\r");
+    if (first == std::string::npos)
+    {
+      if (!currentVehicleTrace.empty ())
+      {
+        vehicleTraces.push_back (currentVehicleTrace);
+        currentVehicleTrace.clear ();
+      }
+      continue;
+    }
+
+    if (line[first] == '#')
+    {
+      continue;
+    }
+
+    MobilityRecord record;
+    std::string trailingToken;
+    std::istringstream iss (line);
+    if (!(iss >> record.time >> record.x >> record.y) || (iss >> trailingToken))
+    {
+      std::cerr << "Invalid mobility trace at line " << lineNumber
+                << ": expected exactly 'time x y'" << std::endl;
+      return 1;
+    }
+
+    if (!currentVehicleTrace.empty () && record.time <= currentVehicleTrace.back ().time)
+    {
+      std::cerr << "Non-increasing timestamp in mobility trace at line " << lineNumber << std::endl;
+      return 1;
+    }
+    currentVehicleTrace.push_back (record);
+  }
+
+  if (!currentVehicleTrace.empty ())
+  {
+    vehicleTraces.push_back (currentVehicleTrace);
+  }
+
+  if (vehicleTraces.empty ())
+  {
+    std::cerr << "Mobility trace contains no vehicle waypoints: " << traceFile << std::endl;
+    return 1;
+  }
+
+  const uint32_t nUeNodes = vehicleTraces.size ();
   NodeContainer ueNodes;
   ueNodes.Create (nUeNodes);
   MobilityHelper uemobility;
   uemobility.SetMobilityModel ("ns3::WaypointMobilityModel");
   uemobility.Install (ueNodes);
-  nUeNodes = -1;
-  trace.clear();              
-  trace.seekg(0, std::ios::beg);
   double simTime = 0.0;
-  // std::map <uint64_t, double> imsiArrivalTime;
-  for (uint32_t u = 0; u < ueNodes.GetN (); ++u){
-    imsiArrivalTime[u+1] = 0.0;
-  }
+  for (uint32_t u = 0; u < nUeNodes; ++u)
+  {
+    if (vehicleTraces[u].size () < 2 ||
+        vehicleTraces[u].back ().time - vehicleTraces[u].front ().time <= 0.2)
+    {
+      std::cerr << "Vehicle " << u
+                << " needs at least two waypoints spanning more than 0.2 seconds" << std::endl;
+      return 1;
+    }
 
-  while (std::getline(trace, line)){
-    if (line.empty()) {
-      ++nUeNodes;
-      continue;
+    imsiArrivalTime[u + 1] = vehicleTraces[u].front ().time;
+    imsiRunningTime[u + 1] = vehicleTraces[u].back ().time;
+    simTime = std::max (simTime, imsiRunningTime[u + 1]);
+
+    for (const MobilityRecord& record : vehicleTraces[u])
+    {
+      ueNodes.Get (u)->GetObject<WaypointMobilityModel> ()->AddWaypoint (
+          Waypoint (Seconds (record.time), Vector (record.x, record.y, 0.0)));
     }
-    float time, x, y;
-    std::istringstream iss(line);
-    if (!(iss >> time >> x >> y)){
-      std::cerr << "Warning: Format" << line << std::endl;
-      continue;
-    }
-    else {
-      ueNodes.Get (nUeNodes)->GetObject<WaypointMobilityModel>()->AddWaypoint (Waypoint (Seconds (time), Vector (x, y, 0.00)));
-      if (simTime < time) {
-        simTime = time;
-        // imsiRunningTime[nUeNodes+1] = time;
-      }
-      imsiRunningTime[nUeNodes+1] = time;
-      if (imsiArrivalTime[nUeNodes+1] == 0){
-        imsiArrivalTime[nUeNodes+1] = time;
-        // NS_LOG_UNCOND("UE " << nUeNodes+1 << ", imsiArrivalTime " << imsiArrivalTime[nUeNodes+1]);
-      }
-      // NS_LOG_UNCOND ("Time: " << Seconds (time) << " Position: " << Vector (x, y, 0.00));
-    }    
   }
 
   // for (uint32_t u = 0; u < ueNodes.GetN (); ++u){
@@ -376,7 +424,7 @@ main (int argc, char *argv[])
       ipv4RoutingHelper.GetStaticRouting (remoteHost->GetObject<Ipv4> ());
   remoteHostStaticRouting->AddNetworkRouteTo (Ipv4Address ("7.0.0.0"), Ipv4Mask ("255.0.0.0"), 1);
 
-  NS_LOG_UNCOND ("Number of UEs: " << nUeNodes + 1 << " Number of gnbs: " << nMmWaveEnbNodes);
+  NS_LOG_UNCOND ("Number of UEs: " << nUeNodes << " Number of gnbs: " << nMmWaveEnbNodes);
   // Position
   NodeContainer mmWaveEnbNodes;
   NodeContainer lteEnbNodes;

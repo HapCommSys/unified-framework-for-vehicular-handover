@@ -83,7 +83,7 @@ RUN apt-get update  \
   && cd dbaas/redismodule \
   && ./autogen.sh \
   && ./configure \
-  && make -j ${nproc} all \
+  && make -j "$(nproc)" all \
   && make install \
   && rm -Rf ${STAGE_DIR}/dbaas \
 # Install sdl
@@ -92,7 +92,7 @@ RUN apt-get update  \
   && cd sdl \
   && ./autogen.sh \
   && ./configure \
-  && make -j ${nproc} all \
+  && make -j "$(nproc)" all \
   && make install \
   && rm -Rf ${STAGE_DIR}/sdl \
 # Install rapidjson
@@ -102,7 +102,7 @@ RUN apt-get update  \
   && mkdir build \
   && cd build \
   && cmake -DCMAKE_INSTALL_PREFIX=/usr/local .. \
-  && make -j ${nproc} \
+  && make -j "$(nproc)" \
   && make install \
   && cd ${STAGE_DIR} \
   && rm -rf rapidjson \
@@ -113,7 +113,7 @@ RUN apt-get update  \
   && export CPATH=$CPATH:/usr/local/include \
   && cd src \
   && make clean \
-  && make -j ${nproc} \
+  && make -j "$(nproc)" \
   && make install \
   && ldconfig \
   && sysctl -w net.ipv6.conf.lo.disable_ipv6=1 \
@@ -121,8 +121,8 @@ RUN apt-get update  \
 ## DRL Agent
 ##------------------------------------
 ## install packages and pip requirements
-#  && pip3 --no-cache-dir install -U pip \
-#  && pip3 --no-cache-dir install -r /home/${XAPP_DIR}/requirements.txt \
+  && python3 -m pip --no-cache-dir install --upgrade "pip<22" \
+  && python3 -m pip --no-cache-dir install -r /home/${XAPP_DIR}/requirements.txt \
   && apt-get autoremove -y \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*

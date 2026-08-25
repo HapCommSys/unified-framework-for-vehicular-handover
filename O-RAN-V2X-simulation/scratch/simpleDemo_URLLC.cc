@@ -130,7 +130,7 @@ void PrintPosition (NodeContainer nodeCantainer, Time period)
 int
 main (int argc, char *argv[])
 {
-  std::string traceFile = "/home/yizhou/桌面/SUMODEMO/SimpleDemo/MultiVehicle/m=4/traceFile.txt";
+  std::string traceFile;
   LogComponentEnableAll (LOG_PREFIX_ALL);
   LogComponentEnable ("MmWaveEnbNetDevice", LOG_LEVEL_INFO);
   // LogComponentEnable ("LteEnbRrc", LOG_LEVEL_INFO);
@@ -138,8 +138,14 @@ main (int argc, char *argv[])
   // LogComponentEnable ("LteEnbNetDevice", LOG_LEVEL_INFO);
   // Command line arguments
   CommandLine cmd (__FILE__);
-  cmd.AddValue ("traceFile", "Ns2 movement trace file", traceFile);
+  cmd.AddValue ("traceFile", "waypoint trace file", traceFile);
   cmd.Parse (argc, argv);
+
+  if (traceFile.empty ())
+  {
+    std::cerr << "Missing mobility trace. Pass --traceFile=/path/to/traceFile.txt" << std::endl;
+    return 1;
+  }
 
   bool harqEnabled = true;
 

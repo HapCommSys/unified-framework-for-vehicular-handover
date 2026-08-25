@@ -2,6 +2,10 @@
 
 ================================
 
+> **Framework users:** this directory contains the modified simulation tree.
+> Start with the [repository-level README](../README.md) for the complete RIC,
+> xApp, mobility, and training workflow.
+
 This repository is a fork of the [ns3-mmwave project](https://github.com/nyuwireless-unipd/ns3-mmwave) with updates to make it work with the [ns3-o-ran-e2](https://github.com/o-ran-sc/sim-ns3-o-ran-e2) ns-3 module.
 
 This module enables the support for running multiple terminations of an O-RAN-compliant E2 interface inside the simulation process. It has been developed as part of a collaborative effort between the [Institute for the Wireless Internet of Things (WIoT)](https://wiot.northeastern.edu) at Northeastern University, Sapienza University of Rome, Mavenir, and the University of Padova.

@@ -1,5 +1,16 @@
-from xapp_control import *
-from xapp_threading import *
+from threading import Thread
+
+from xapp_control import open_control_socket, receive_from_socket, send_socket
+from xapp_threading import (
+    Decoded,
+    KpmDecodeThread,
+    KpmUpdateThread,
+    RicMsg,
+    RLInput,
+    RLThread,
+    UnDecode,
+    receivedReports,
+)
 
 
 def ThreadInit():
@@ -30,15 +41,11 @@ def main():
     while True:
 
         data_sck = receive_from_socket(control_sck)
-        if len(data_sck) <= 0:
-            if len(data_sck) == 0:
-                continue
-            else:
-                # logging.info('Negative value for socket')
-                break
-        else:
+        if not data_sck:
+            print('Connector closed the control socket.')
+            break
 
-            UnDecode.put(data_sck)
+        UnDecode.put(data_sck)
 
         if not RicMsg.empty():
             msg = RicMsg.get()
@@ -59,4 +66,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

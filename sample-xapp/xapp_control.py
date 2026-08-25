@@ -21,9 +21,10 @@ def open_control_socket(port: int):
 
 
 # send through socket
-def send_socket(socket, msg: str):
-    bytes_num = socket.send(msg.encode('utf-8'))
-    print('Socket sent ' + str(bytes_num) + ' bytes')
+def send_socket(sock, msg: str):
+    payload = msg.encode('utf-8')
+    sock.sendall(payload)
+    print('Socket sent ' + str(len(payload)) + ' bytes')
 
 
 # receive data from socker
@@ -48,15 +49,26 @@ def send_socket(socket, msg: str):
 #         return data.strip()
 #     else:
 #         return ''
-def receive_from_socket(socket) -> str:
-    data_size = 4096
-    size_data = socket.recv(4)
-    # if len(size_data) < 4:
-    #     print("Incomplete size data")
-    #     return
-    data_size = struct.unpack('!I', size_data)[0]
-    # print(f"Expected data size: {data_size} bytes")
-    # socket.sendall(b'OK')
-    data = socket.recv(data_size)
+def _recv_exact(sock, size: int) -> bytes:
+    """Receive exactly *size* bytes, or return b'' after a disconnect."""
+    chunks = []
+    remaining = size
+    while remaining:
+        chunk = sock.recv(remaining)
+        if not chunk:
+            return b''
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b''.join(chunks)
 
-    return data
+
+def receive_from_socket(sock) -> bytes:
+    size_data = _recv_exact(sock, 4)
+    if not size_data:
+        return b''
+
+    data_size = struct.unpack('!I', size_data)[0]
+    if data_size == 0:
+        return b''
+
+    return _recv_exact(sock, data_size)

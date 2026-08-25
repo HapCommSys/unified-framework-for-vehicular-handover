@@ -1,0 +1,8 @@
+# Recorded on the Python 3.10.12 reference training host.
+numpy==2.2.6
+scipy==1.15.3
+tensorboard==2.20.0
+
+# The reference host reports 2.9.0+cu128. Select the appropriate CPU or
+# accelerator-specific wheel for the target platform while keeping release 2.9.0.
+torch==2.9.0

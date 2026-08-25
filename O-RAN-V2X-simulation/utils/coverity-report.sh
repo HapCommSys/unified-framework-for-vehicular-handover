@@ -71,10 +71,15 @@ repoversion="$(basename $(dirname $PWD))@$(hg id -i)"
 # curl complains if this contains white space
 description="Coverity-mods"
 
+if [ -z "${COVERITY_PASSWORD:-}" ]; then
+    say "Set COVERITY_PASSWORD before uploading a Coverity report."
+    exit 1
+fi
+
 doo curl \
      --form file=@$tarf \
      --form project=ns-3 \
-     --form password=4jk2BVX9 \
+     --form password="$COVERITY_PASSWORD" \
      --form email="$useremail" \
      --form version="$repoversion" \
      --form description="$description" \

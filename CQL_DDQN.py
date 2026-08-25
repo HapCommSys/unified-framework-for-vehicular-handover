@@ -1,3 +1,4 @@
+import argparse
 import sys
 import torch
 import torch.nn as nn
@@ -11,20 +12,23 @@ from itertools import permutations
 # from rich.traceback import install
 # install(show_locals=True)
 from torch.utils.tensorboard import SummaryWriter
-import os
 from pathlib import Path
 
 torch.set_printoptions(threshold=float('inf'), linewidth=400)
 np.set_printoptions(threshold=float('inf'), linewidth=400)
 
-script_stem = Path(__file__).resolve().resolve().stem
-# writer = SummaryWriter(f'./logs/{script_stem}/')
-log_dir = Path("D:/IFIP_logs/CQL_DDQN")
-log_dir.mkdir(parents=True, exist_ok=True)
+script_stem = Path(__file__).resolve().stem
 
-writer = SummaryWriter(log_dir=log_dir.as_posix())
 
-print("TensorBoard log directory:", log_dir.as_posix())
+class NullSummaryWriter:
+    def add_scalar(self, *args, **kwargs):
+        pass
+
+    def close(self):
+        pass
+
+
+writer = NullSummaryWriter()
 
 MAX_EPISODE = 20000
 WEIGHT = 0.5
@@ -864,9 +868,69 @@ class Model:
             t_param.data.copy_(self.tau * param.data + (1 - self.tau) * t_param.data)
 
 
+def save_checkpoint(trainer, output_file, episode):
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            'episode': episode,
+            'agent_state_dict': trainer.agent.state_dict(),
+            'agent_target_state_dict': trainer.agent_target.state_dict(),
+            'agent_optimizer_state_dict': trainer.agent_optimizer.state_dict(),
+            'agent_scheduler_state_dict': trainer.agent_scheduler.state_dict(),
+        },
+        str(output_file),
+    )
+    print('Saved checkpoint:', output_file)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train the offline CQL-DDQN handover policy.')
+    parser.add_argument(
+        '--dataset-root',
+        type=Path,
+        required=True,
+        help='directory containing exp=<value>/<strategy>/Seed=<n> datasets',
+    )
+    parser.add_argument('--log-dir', type=Path, default=Path('logs') / script_stem)
+    parser.add_argument('--output-dir', type=Path, default=Path('model'))
+    parser.add_argument('--run-name', default=script_stem)
+    parser.add_argument('--episodes', type=int, default=MAX_EPISODE)
+    parser.add_argument('--checkpoint-interval', type=int, default=4000)
+    parser.add_argument('--batch-size', type=int, default=128)
+    parser.add_argument('--num-seeds', type=int, default=100)
+    parser.add_argument('--random-seed', type=int, default=0)
+    parser.add_argument('--experiments', nargs='+', default=['0.1', '0.2', '0.3', '0.4'])
+    parser.add_argument(
+        '--strategies',
+        nargs='+',
+        default=['ThresholdSeamless', 'DynamicTttSeamless', 'GreedySeamlessHO'],
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    strategy = ["ThresholdSeamless/", "DynamicTttSeamless/", "GreedySeamlessHO/"]
-    seed = 100
+    args = parse_args()
+    if args.episodes < 1:
+        raise ValueError('--episodes must be positive')
+    if args.checkpoint_interval < 1:
+        raise ValueError('--checkpoint-interval must be positive')
+    if args.batch_size < 1:
+        raise ValueError('--batch-size must be positive')
+    if args.num_seeds < 1:
+        raise ValueError('--num-seeds must be positive')
+    if not args.dataset_root.is_dir():
+        raise FileNotFoundError('Dataset root not found: {}'.format(args.dataset_root))
+
+    random.seed(args.random_seed)
+    np.random.seed(args.random_seed)
+    torch.manual_seed(args.random_seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.random_seed)
+
+    args.log_dir.mkdir(parents=True, exist_ok=True)
+    writer = SummaryWriter(log_dir=args.log_dir.as_posix())
+    print('TensorBoard log directory:', args.log_dir)
+    print('Training device:', device)
 
     trainer = Model(
         state_dim=(10, 17),
@@ -874,52 +938,18 @@ if __name__ == "__main__":
         lr=3e-4,
         alpha=1.0,
         initial_penalty=PENALTY,
-        max_update=MAX_EPISODE,
+        max_update=args.episodes,
     )
 
-    single, vehnumchange, num_done = 0, 0, 0
+    vehnumchange, num_done = 0, 0
+    loaded_seed_directories = 0
 
-    for a in [1, 2, 3, 4]:
-        # dataset_path = f"./Dataset/exp=0.{a}/"
-        dataset_path = f'../raw_data/Dataset/exp=0.{a}/'
+    for experiment in args.experiments:
+        dataset_path = args.dataset_root / ('exp=' + experiment)
 
-        for S in [0, 1, 2]:
-            for i in range(1, seed + 1):
-                # if a == 4:
-                #     if S == 0:
-                #         if i in [20, 25, 40, 47, 51, 62, 81, 90, 96]:
-                #             continue
-                #     elif S == 1:
-                #         if i in [17, 21, 25, 37, 47, 51, 60, 62, 64, 81, 83, 88, 90, 96]:
-                #             continue
-                #     elif S == 2:
-                #         if i in [64, 56]:
-                #             continue
-
-                # state = np.genfromtxt(
-                #     dataset_path + strategy[S] + f"Seed={i}/State.txt",
-                #     skip_header=1,
-                #     delimiter=',',
-                # )
-                # ts_state = state[:, 0]
-                # state = state[:, 1:].reshape((len(state), 10, 17))
-                #
-                # action = np.genfromtxt(
-                #     dataset_path + strategy[S] + f"Seed={i}/Action.txt",
-                #     skip_header=1,
-                #     delimiter=',',
-                # )
-                # ts_action = action[:, 0]
-                # action = action[:, 1:]
-                #
-                # reward = np.genfromtxt(
-                #     dataset_path + strategy[S] + f"Seed={i}/Reward_.txt",
-                #     skip_header=1,
-                #     delimiter=',',
-                # )
-                # ts_reward = reward[:, 0]
-                # reward = reward[:, 1:].reshape((len(reward), 10, 3))
-                seed_dir = Path(dataset_path) / strategy[S] / f"Seed={i}"
+        for S, strategy_name in enumerate(args.strategies):
+            for i in range(1, args.num_seeds + 1):
+                seed_dir = dataset_path / strategy_name / f"Seed={i}"
 
                 state_file = seed_dir / "State.txt"
                 action_file = seed_dir / "Action.txt"
@@ -929,34 +959,52 @@ if __name__ == "__main__":
                     print(f"[Skip] Missing file(s): {seed_dir}")
                     continue
 
-                state = np.genfromtxt(
-                    state_file,
-                    skip_header=1,
-                    delimiter=',',
-                )
-                ts_state = state[:, 0]
-                state = state[:, 1:].reshape((len(state), 10, 17))
+                loaded_seed_directories += 1
 
-                action = np.genfromtxt(
-                    action_file,
-                    skip_header=1,
-                    delimiter=',',
+                state_raw = np.atleast_2d(
+                    np.genfromtxt(state_file, skip_header=1, delimiter=',')
                 )
-                ts_action = action[:, 0]
-                action = action[:, 1:]
+                action_raw = np.atleast_2d(
+                    np.genfromtxt(action_file, skip_header=1, delimiter=',')
+                )
+                reward_raw = np.atleast_2d(
+                    np.genfromtxt(reward_file, skip_header=1, delimiter=',')
+                )
 
-                reward = np.genfromtxt(
-                    reward_file,
-                    skip_header=1,
-                    delimiter=',',
-                )
-                ts_reward = reward[:, 0]
-                reward = reward[:, 1:].reshape((len(reward), 10, 3))
+                expected_columns = {'State.txt': 171, 'Action.txt': 11, 'Reward_.txt': 31}
+                observed_columns = {
+                    'State.txt': state_raw.shape[1],
+                    'Action.txt': action_raw.shape[1],
+                    'Reward_.txt': reward_raw.shape[1],
+                }
+                for file_name, expected in expected_columns.items():
+                    if observed_columns[file_name] != expected:
+                        raise ValueError(
+                            '{} in {} has {} columns; expected {}'.format(
+                                file_name, seed_dir, observed_columns[file_name], expected
+                            )
+                        )
+
+                if not (len(state_raw) == len(action_raw) == len(reward_raw)):
+                    raise ValueError('Dataset row counts do not match in {}'.format(seed_dir))
+
+                ts_state = state_raw[:, 0]
+                ts_action = action_raw[:, 0]
+                ts_reward = reward_raw[:, 0]
+                if not (
+                    np.allclose(ts_state, ts_action, rtol=0.0, atol=1e-6)
+                    and np.allclose(ts_state, ts_reward, rtol=0.0, atol=1e-6)
+                ):
+                    raise ValueError('Dataset timestamps do not align in {}'.format(seed_dir))
+
+                state = state_raw[:, 1:].reshape((len(state_raw), 10, 17))
+                action = action_raw[:, 1:]
+                reward = reward_raw[:, 1:].reshape((len(reward_raw), 10, 3))
 
                 pending = None  # 缓存上一条“准备加入”的 transition: (s, a, r, s')
                 for j in range(len(state) - 1):
                     meta = {
-                        "exp": a,
+                        "exp": experiment,
                         "S": S,
                         "seed": i,
                         "idx": j,
@@ -1044,23 +1092,36 @@ if __name__ == "__main__":
                     )
                     num_done += 1
 
-    print(f'single-vehicle: {single}, vehicle number changes: {vehnumchange}, number of dones: {num_done}')
-    print(f"Length of Replay Buffer: {trainer.replay_buffer.__len__()}")
+    replay_buffer_size = len(trainer.replay_buffer)
+    print(f'vehicle number changes: {vehnumchange}, number of dones: {num_done}')
+    print(f'Loaded seed directories: {loaded_seed_directories}')
+    print(f'Length of Replay Buffer: {replay_buffer_size}')
+
+    if replay_buffer_size < args.batch_size:
+        writer.close()
+        raise RuntimeError(
+            'The replay buffer contains {} transitions, fewer than --batch-size {}. '
+            'Check --dataset-root and the documented dataset layout.'.format(
+                replay_buffer_size, args.batch_size
+            )
+        )
 
     analyze_ho_ratio(trainer.replay_buffer)
 
-    for episode in range(MAX_EPISODE + 1):
-        trainer.update(batch_size=128, global_step=episode)
+    for episode in range(1, args.episodes + 1):
+        trainer.update(batch_size=args.batch_size, global_step=episode)
 
-        # if episode % 4000 == 0 and episode > 0:
-        #     os.makedirs(f'./model/', exist_ok=True)
-        #     torch.save(
-        #         {
-        #             'episode': episode,
-        #             'agent_state_dict': trainer.agent.state_dict(),
-        #             'agent_target_state_dict': trainer.agent_target.state_dict(),
-        #             'agent_optimizer_state_dict': trainer.agent_optimizer.state_dict(),
-        #             'agent_scheduler_state_dict': trainer.agent_scheduler.state_dict(),
-        #         },
-        #         f'../model/{script_stem}_{episode}.pth',
-        #     )
+        if episode % args.checkpoint_interval == 0 and episode > 0:
+            save_checkpoint(
+                trainer,
+                args.output_dir / '{}_{}.pth'.format(args.run_name, episode),
+                episode,
+            )
+
+    if args.episodes % args.checkpoint_interval != 0:
+        save_checkpoint(
+            trainer,
+            args.output_dir / '{}_{}.pth'.format(args.run_name, args.episodes),
+            args.episodes,
+        )
+    writer.close()

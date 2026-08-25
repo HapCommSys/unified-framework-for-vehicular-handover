@@ -525,7 +525,7 @@ class DQN(nn.Module):
 #     single, vehnumchange, num_done = 0, 0, 0
 #     for a in [2, 3, 4]:
 #         # dataset_path = f"./Dataset/exp=0.{a}/"
-#         dataset_path = f'/home/yizhou/桌面/Dataset/exp=0.{a}/'
+#         dataset_path = f'/path/to/Dataset/exp=0.{a}/'
 #         for S in [0, 1, 2]:
 #             for i in range(1, seed + 1):
 #                 state = np.genfromtxt(dataset_path + strategy[S] + f"Seed={i}/State.txt", skip_header=1, delimiter=',')
@@ -597,4 +597,3 @@ class DQN(nn.Module):
 #                 'agent_optimizer_state_dict': trainer.agent_optimizer.state_dict(),
 #                 'agent_scheduler_state_dict': trainer.agent_scheduler.state_dict(),
 #             }, f'../model/DQN_{episode}.pth')
-

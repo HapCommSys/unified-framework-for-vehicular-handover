@@ -3,8 +3,9 @@
 export DEBUG=0
 export CONNECTOR_DIR=/home/xapp-sm-connector
 
-# these are replaced through the dockerfile
-export GNB_ID=ns-o-ran
+# MultiVehicleURLLC uses one LTE anchor and ten mmWave RSUs.  The official
+# setup-sample-xapp.sh script may override this value; invoke it with "rsu".
+export GNB_ID=rsu
 export XAPP_ID=24
 
 # get build clean from cli arguments
@@ -25,8 +26,8 @@ if [ -n "${XAPP_ID}" ]; then
 fi
 
 # build
-if [ ${BUILD_CLEAN} ]; then
-    cd ${CONNECTOR_DIR}/src && make clean && make -j ${nproc} && make install && ldconfig
+if [ "${BUILD_CLEAN}" ]; then
+    cd ${CONNECTOR_DIR}/src && make clean && make -j "$(nproc)" && make install && ldconfig
 else
-    cd ${CONNECTOR_DIR}/src && make -j ${nproc} && make install && ldconfig
+    cd ${CONNECTOR_DIR}/src && make -j "$(nproc)" && make install && ldconfig
 fi
