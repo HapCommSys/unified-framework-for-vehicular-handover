@@ -418,8 +418,8 @@ void Xapp::send_ric_control_request(char* payload, std::string gnb_id) {
     din.func_id = 300;
     const char* header = "2";
     din.control_header_size = strlen(header) + 1;
-    std::vector<uint8_t> control_header(din.control_header_size);
-    din.control_header = control_header.data();
+    std::vector<uint8_t> control_header_buffer(din.control_header_size);
+    din.control_header = control_header_buffer.data();
     std::memcpy(din.control_header, header, din.control_header_size);
     // std::cout << "din.control_header: " << din.control_header << " size: " << din.control_header_size << std::endl;
 
@@ -489,8 +489,8 @@ void Xapp::send_ric_control_request(char* payload, std::string gnb_id, long int 
     din.func_id = func_id;
     const char* header = control_header;
     din.control_header_size = strlen(header) + 1;
-    std::vector<uint8_t> control_header(din.control_header_size);
-    din.control_header = control_header.data();
+    std::vector<uint8_t> control_header_buffer(din.control_header_size);
+    din.control_header = control_header_buffer.data();
     std::memcpy(din.control_header, header, din.control_header_size);
     // std::cout << "din.control_header: " << din.control_header << " size: " << din.control_header_size << std::endl;
 
