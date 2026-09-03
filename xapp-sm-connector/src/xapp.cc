@@ -214,8 +214,7 @@ void Xapp::shutdown(){
             int control_sckfd = it->second;
 
             int rcv_size = recv(control_sckfd, buf, max_size, 0);
-            if (rcv_size > 0) {xapp.cc:397:52: error: expected primary-expression before ')' token
-     din.control_header = (E2SM_RC_ControlHeader_t *)calloc(din.control_header_size, sizeof(E2SM_RC_ControlHeader_t *);
+            if (rcv_size > 0) {
 
                 // get gnb_id from agent IP
                 std::map<std::string, std::string>::iterator it_gnb;
@@ -419,16 +418,16 @@ void Xapp::send_ric_control_request(char* payload, std::string gnb_id) {
     din.func_id = 300;
     const char* header = "2";
     din.control_header_size = strlen(header) + 1;
-    // din.control_header = (E2SM_RC_ControlHeader_t *)calloc(din.control_header_size, sizeof(E2SM_RC_ControlHeader_t *));
-    din.control_header = (uint8_t*)calloc(din.control_header_size, sizeof(uint8_t*));
-
+    std::vector<uint8_t> control_header(din.control_header_size);
+    din.control_header = control_header.data();
     std::memcpy(din.control_header, header, din.control_header_size);
     // std::cout << "din.control_header: " << din.control_header << " size: " << din.control_header_size << std::endl;
 
     const char* msg = payload;
 	din.control_msg_size = strlen(msg) + 1;
-	mdclog_write(MDCLOG_INFO, "Size of msg %d", din.control_msg_size);
-	din.control_msg = (uint8_t*) calloc(din.control_msg_size, sizeof(uint8_t));
+	mdclog_write(MDCLOG_INFO, "Size of msg %zu", din.control_msg_size);
+    std::vector<uint8_t> control_msg(din.control_msg_size);
+	din.control_msg = control_msg.data();
 	std::memcpy(din.control_msg, msg, din.control_msg_size);
  	ric_control_helper dout {};
 
@@ -439,7 +438,11 @@ void Xapp::send_ric_control_request(char* payload, std::string gnb_id) {
  	unsigned char buf[BUFFER_SIZE];
     size_t buf_size = BUFFER_SIZE;
 
- 	res = ctrl_req.encode_e2ap_control_request(&buf[0], &buf_size, din);
+	res = ctrl_req.encode_e2ap_control_request(&buf[0], &buf_size, din);
+	if (!res) {
+	    mdclog_write(MDCLOG_ERR, "Failed to encode RIC Control Request in file= %s, line=%d", __FILE__, __LINE__);
+	    return;
+	}
 
  	xapp_rmr_header rmr_header;
 	rmr_header.message_type = RIC_CONTROL_REQ;
@@ -486,16 +489,16 @@ void Xapp::send_ric_control_request(char* payload, std::string gnb_id, long int 
     din.func_id = func_id;
     const char* header = control_header;
     din.control_header_size = strlen(header) + 1;
-    // din.control_header = (E2SM_RC_ControlHeader_t *)calloc(din.control_header_size, sizeof(E2SM_RC_ControlHeader_t *));
-    din.control_header = (uint8_t*)calloc(din.control_header_size, sizeof(uint8_t*));
-
+    std::vector<uint8_t> control_header(din.control_header_size);
+    din.control_header = control_header.data();
     std::memcpy(din.control_header, header, din.control_header_size);
     // std::cout << "din.control_header: " << din.control_header << " size: " << din.control_header_size << std::endl;
 
     const char* msg = payload;
 	din.control_msg_size = strlen(msg) + 1;
 	// mdclog_write(MDCLOG_INFO, "Size of msg %d", din.control_msg_size);
-	din.control_msg = (uint8_t*) calloc(din.control_msg_size, sizeof(uint8_t));
+	std::vector<uint8_t> control_msg(din.control_msg_size);
+	din.control_msg = control_msg.data();
 	std::memcpy(din.control_msg, msg, din.control_msg_size);
     // std::cout << "Payload = " << payload << " din.control_msg: " << din.control_msg << " size: " << din.control_msg_size << std::endl;
 
@@ -508,7 +511,11 @@ void Xapp::send_ric_control_request(char* payload, std::string gnb_id, long int 
  	unsigned char buf[BUFFER_SIZE];
     size_t buf_size = BUFFER_SIZE;
 
- 	res = ctrl_req.encode_e2ap_control_request(&buf[0], &buf_size, din);
+	res = ctrl_req.encode_e2ap_control_request(&buf[0], &buf_size, din);
+	if (!res) {
+	    mdclog_write(MDCLOG_ERR, "Failed to encode RIC Control Request in file= %s, line=%d", __FILE__, __LINE__);
+	    return;
+	}
 
  	xapp_rmr_header rmr_header;
 	rmr_header.message_type = RIC_CONTROL_REQ;
@@ -705,4 +712,3 @@ void split_data(char* buf, int rcv_size, char** part1, char** part2) {
         (*part2)[0] = '\0';
     }
 }
-

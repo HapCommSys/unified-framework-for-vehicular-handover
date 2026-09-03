@@ -47,16 +47,17 @@ flowchart TB
     G --> D
 ```
 
-The online loop is KPM reporting → xApp decision → RC message → simulator-side
-handover execution. The offline path trains a policy from previously collected
-state, action, and outcome data, then deploys the resulting checkpoint in the
-xApp container.
+The online loop is KPM reporting → xApp decision → RIC Control Request →
+simulator-side handover execution. The offline path trains a policy from
+previously collected state, action, and outcome data, then deploys the
+resulting checkpoint in the xApp container.
 
 ## Repository layout
 
 | Path | Purpose |
 | --- | --- |
 | `O-RAN-V2X-simulation/` | ns-3/mmWave/ns-O-RAN simulation tree with the V2X handover extensions |
+| `O-RAN-V2X-simulation/contrib/oran-interface/` | Included ns-O-RAN interface with the framework control-payload adapter |
 | `O-RAN-V2X-simulation/scratch/MultiVehicleURLLC.cc` | Reference multi-vehicle URLLC scenario |
 | `O-RAN-V2X-simulation/sumo/HighwayMultiVehicle.sumocfg` | Complete bidirectional 2,000 m SUMO highway scenario |
 | `O-RAN-V2X-simulation/sumo/traceFile.txt` | Ready-to-run six-vehicle reference mobility trace |
@@ -68,13 +69,14 @@ xApp container.
 
 ## Reproducibility and data availability
 
-The repository includes the simulation implementation, xApp and connector, a
+The repository includes the simulation implementation, the reviewed
+`oran-interface` module required by the control loop, the xApp and connector, a
 complete 2,000 m SUMO road and traffic scenario, a ready-to-run six-vehicle
 mobility trace, the mobility converter, training code, and a pretrained
 checkpoint. The following items remain external:
 
 - the ColO-RAN near-RT RIC;
-- `e2sim` and the ns-O-RAN `oran-interface` module;
+- `e2sim`;
 - the raw experiment logs, preprocessing pipeline, and exact training dataset
   used for the paper.
 
@@ -118,8 +120,12 @@ recorded deployment-package releases. The deployed agent explicitly performs
 inference on the CPU, so the reference PyTorch `+cu102` wheel is not a runtime
 requirement; the requirements file pins the common `1.10.2` release.
 
-The exact commits of the external near-RT RIC, `e2sim`, and `oran-interface`
-dependencies have not yet been independently verified.
+The exact commit of the external near-RT RIC has not yet been independently
+verified. The supported `e2sim` dependency is tag `v1.0`, commit
+`275f58fff459975cfcaf75e5b53c338a2bb08166`. The included `oran-interface`
+is based on upstream commit `8ceee89404856e3249b75b3ae36b3877e910aef8`,
+with the framework-specific control-payload adapter documented in
+[`O-RAN-V2X-simulation/contrib/oran-interface/FINE_MODIFICATIONS.md`](O-RAN-V2X-simulation/contrib/oran-interface/FINE_MODIFICATIONS.md).
 
 ```bash
 sudo apt-get update
@@ -190,7 +196,8 @@ be supplied with the `XAPP_MODEL_PATH` environment variable.
 Build and install the `e2sim` library as described by ns-O-RAN:
 
 ```bash
-git clone https://github.com/wineslab/ns-o-ran-e2-sim oran-e2sim
+git clone --branch v1.0 --depth 1 \
+  https://github.com/wineslab/o-ran-e2sim oran-e2sim
 cd oran-e2sim/e2sim
 mkdir build
 ./build_e2sim.sh 3
@@ -198,18 +205,18 @@ mkdir build
 
 Log level `3` enables verbose E2 debugging. `e2sim` is installed as a dependency
 used by the ns-O-RAN module; it is not launched as a separate simulator process
-for this experiment.
+for this experiment. Do not substitute an unrelated e2sim fork or branch: the
+reference control-message wire path was checked against tag `v1.0`.
 
 ## 3. Build the V2X simulation
 
-The simulation tree is already included in this repository. Do not clone a
-second `ns-o-ran-ns3-mmwave` tree over it. Install the external O-RAN module in
-the expected `contrib` path and then build ns-3:
+The simulation tree and its required O-RAN interface are already included in
+this repository. Do not clone another `ns-o-ran-ns3-mmwave` tree or replace
+`contrib/oran-interface` with the upstream `master` branch; the upstream branch
+does not contain the project-specific control-payload adapter. Build ns-3
+directly:
 
 ```bash
-cd "$FRAMEWORK_ROOT/O-RAN-V2X-simulation/contrib"
-git clone -b master https://github.com/o-ran-sc/sim-ns3-o-ran-e2 oran-interface
-
 cd "$FRAMEWORK_ROOT/O-RAN-V2X-simulation"
 ./ns3 configure --enable-examples --enable-tests
 ./ns3 build
@@ -332,8 +339,9 @@ docker exec -e XAPP_MODEL_PATH=/home/sample-xapp/model/ICQL_HO_Cosine_Lite_20000
 - **The xApp waits indefinitely for a complete state:** confirm that the xApp
   was built with `./setup-sample-xapp.sh rsu`, not `ns-o-ran`, and that all 11
   node IDs in `xapp-sm-connector/init/rsu_list.txt` are connected.
-- **`oran-interface` is missing during configuration:** clone it into
-  `O-RAN-V2X-simulation/contrib/oran-interface` before running `./ns3 configure`.
+- **`oran-interface` is missing during configuration:** verify that the clone
+  contains `O-RAN-V2X-simulation/contrib/oran-interface/CMakeLists.txt`. Do not
+  replace the included directory with the upstream `master` branch.
 - **The scenario reports a mobility-trace error:** regenerate the file with
   `TraceFileTransfer.py`; each vehicle needs at least two strictly increasing
   timestamps spanning more than 0.2 seconds.
@@ -382,7 +390,7 @@ This work builds on the following upstream projects:
 
 - [ns-O-RAN / OpenRAN Gym](https://openrangym.com/tutorials/ns-o-ran)
 - [ColO-RAN near-RT RIC](https://github.com/wineslab/colosseum-near-rt-ric)
-- [ns-O-RAN e2sim](https://github.com/wineslab/ns-o-ran-e2-sim)
+- [ns-O-RAN e2sim](https://github.com/wineslab/o-ran-e2sim)
 - [O-RAN ns-3 interface](https://github.com/o-ran-sc/sim-ns3-o-ran-e2)
 - [SUMO](https://eclipse.dev/sumo/)
 
@@ -390,6 +398,9 @@ Licensing is component-specific:
 
 - The ns-3 simulation tree retains its upstream GPL-2.0 license in
   [`O-RAN-V2X-simulation/LICENSE`](O-RAN-V2X-simulation/LICENSE).
+- The included O-RAN interface retains its upstream GPL-2.0 license in
+  [`O-RAN-V2X-simulation/contrib/oran-interface/LICENSE`](O-RAN-V2X-simulation/contrib/oran-interface/LICENSE),
+  with project-specific changes documented separately.
 - Files inherited from the xApp service-model connector retain their original
   Apache-2.0 notices.
 - A license for newly authored project code has not yet been declared.

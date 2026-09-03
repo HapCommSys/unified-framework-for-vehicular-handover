@@ -2,7 +2,8 @@
 
 ================================
 
-> **Framework users:** this directory contains the modified simulation tree.
+> **Framework users:** this directory contains the modified simulation tree
+> and the exact `contrib/oran-interface` module used by the control loop.
 > Start with the [repository-level README](../README.md) for the complete RIC,
 > xApp, mobility, and training workflow.
 

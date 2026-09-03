@@ -73,11 +73,45 @@
 
 #include <cstdint>
 #include <fstream>
+#include <limits>
 #include <numeric>
 #include <sstream>
 
 namespace ns3
 {
+
+namespace
+{
+
+bool
+ParseDecimalIdentifier(const std::string& text, uint64_t maximum, uint64_t& result)
+{
+    if (text.empty())
+    {
+        return false;
+    }
+
+    uint64_t value = 0;
+    for (char character : text)
+    {
+        if (character < '0' || character > '9')
+        {
+            return false;
+        }
+
+        const uint64_t digit = static_cast<uint64_t>(character - '0');
+        if (value > (maximum - digit) / 10)
+        {
+            return false;
+        }
+        value = value * 10 + digit;
+    }
+
+    result = value;
+    return true;
+}
+
+} // namespace
 
 NS_LOG_COMPONENT_DEFINE("LteEnbNetDevice");
 
@@ -447,25 +481,30 @@ LteEnbNetDevice::ControlMessageReceivedCallback(E2AP_PDU_t* sub_req_pdu)
     {
     case RicControlMessage::ControlMessageRequestIdType::TS: {
         NS_LOG_UNCOND("TS, do the handover");
-        // do handover
-        NS_LOG_DEBUG ("controlMessage->m_e2SmRcControlHeaderFormat1: " << controlMessage->m_e2SmRcControlHeaderFormat1 << 
-                  "\ncontrolMessage->m_e2SmRcControlHeaderFormat1->ueId.buf: " << controlMessage->m_e2SmRcControlHeaderFormat1->ueId.buf << 
-                  "\ncontrolMessage->m_e2SmRcControlHeaderFormat1->ueId.size: " << controlMessage->m_e2SmRcControlHeaderFormat1->ueId.size);
-    
-        Ptr<OctetString> imsiString =
-            Create<OctetString>((void*)controlMessage->m_e2SmRcControlHeaderFormat1->ueId.buf,
-                                controlMessage->m_e2SmRcControlHeaderFormat1->ueId.size);
-        char* end;
 
-        uint64_t imsi = std::strtoull(imsiString->DecodeContent().c_str(), &end, 10);
-        NS_LOG_INFO("Imsi Decoded: " << imsi);
-        auto sc = controlMessage->GetSecondaryCellIdHO();
-        NS_LOG_UNCOND("SecondaryCellIdHO = [" << sc << "], len=" << sc.size());
-        for (unsigned char c : sc) {
-        NS_LOG_INFO("  byte=" << (int)c);
+        const std::string imsiText = controlMessage->GetUeIdHO();
+        uint64_t imsi = 0;
+        if (!ParseDecimalIdentifier(imsiText,
+                                    std::numeric_limits<uint64_t>::max(),
+                                    imsi))
+        {
+            NS_LOG_ERROR("Invalid traffic-steering IMSI payload: [" << imsiText << "]");
+            return;
         }
-        uint16_t targetCellId = std::stoi(sc);
-        // uint16_t targetCellId = std::stoi(controlMessage->GetSecondaryCellIdHO());
+        NS_LOG_INFO("Imsi Decoded: " << imsi);
+
+        const std::string targetCellText = controlMessage->GetSecondaryCellIdHO();
+        uint64_t targetCellValue = 0;
+        if (!ParseDecimalIdentifier(targetCellText,
+                                    std::numeric_limits<uint16_t>::max(),
+                                    targetCellValue))
+        {
+            NS_LOG_ERROR("Invalid traffic-steering target-cell payload: ["
+                         << targetCellText << "]");
+            return;
+        }
+
+        const uint16_t targetCellId = static_cast<uint16_t>(targetCellValue);
         NS_LOG_INFO("Target Cell id " << targetCellId);
         m_rrc->TakeUeHoControl(imsi);
         if (!m_forceE2FileLogging)
