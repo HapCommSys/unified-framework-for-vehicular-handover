@@ -120,8 +120,9 @@ recorded deployment-package releases. The deployed agent explicitly performs
 inference on the CPU, so the reference PyTorch `+cu102` wheel is not a runtime
 requirement; the requirements file pins the common `1.10.2` release.
 
-The exact commit of the external near-RT RIC has not yet been independently
-verified. The supported `e2sim` dependency is tag `v1.0`, commit
+The validated near-RT RIC checkout uses the `ns-o-ran` branch at commit
+`e3161c1f4cc25158f79463cc10c9aa066cfb3d99`. The supported `e2sim` dependency
+is tag `v1.0`, commit
 `275f58fff459975cfcaf75e5b53c338a2bb08166`. The included `oran-interface`
 is based on upstream commit `8ceee89404856e3249b75b3ae36b3877e910aef8`,
 with the framework-specific control-payload adapter documented in
@@ -143,8 +144,10 @@ compile or replay an existing trace.
 Clone and start the upstream RIC:
 
 ```bash
-git clone -b ns-o-ran https://github.com/wineslab/colosseum-near-rt-ric
-cd colosseum-near-rt-ric/setup-scripts
+git clone --branch ns-o-ran https://github.com/wineslab/colosseum-near-rt-ric
+cd colosseum-near-rt-ric
+git checkout e3161c1f4cc25158f79463cc10c9aa066cfb3d99
+cd setup-scripts
 ./import-wines-images.sh
 ./setup-ric-bronze.sh
 ```
